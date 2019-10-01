@@ -9,8 +9,9 @@
             $sql = "SELECT password FROM user_login WHERE username = '$username'";
             $r = $this->db->conn->query($sql);
             if($r->num_rows > 0) {
-                if(password_verify($password, $r->fetch_row()[0])) {
-                    return array(true);
+                $spw = $r->fetch_row()[0];
+                if(password_verify($password, $spw)) {
+                    return array(true, $spw);
                 } else {
                     return array(false, "badpassword");
                 }
@@ -32,9 +33,10 @@
         $pass = $log->db->sanitize($P['password']);
         $res = $log->validate($user, $pass);
         if($res[0]) {
-            //temporary, place login token here
+            $token = $log->db->setToken($user, $res[1]);
             echo json_encode(array(
-                "result" => true
+                "result" => true,
+                "jwt" => $token
             ));
         } else {
             echo json_encode(array(

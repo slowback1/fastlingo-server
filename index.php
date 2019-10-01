@@ -1,4 +1,6 @@
 <?php
-    $message = array("message" => "hello world");
+    $message = array(
+        "message" => "hello world"
+);
     echo json_encode($message);
 ?>

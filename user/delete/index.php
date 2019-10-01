@@ -30,7 +30,8 @@
         if($selRes->num_rows > 0) {
             $id = $selRes->fetch_row()[0];
             $queries = array(
-                "DELETE FROM user_login WHERE id = '$id'"
+                "DELETE FROM user_login WHERE id = '$id'",
+                "DELETE FROM user_preferences WHERE id = '$id'"
                 //TO-DO: add SQL entries to this array as needed (IE: if I store additional data in a separate table)
             );
             $allGood = true;

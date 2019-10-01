@@ -16,6 +16,35 @@
         public function insertIntoDB($username, $password, $email) {
             $sql = "INSERT INTO user_login (username, password, email) VALUES ('$username', '$password', '$email')";
             if($this->db->conn->query($sql)) {
+                if($this->insertIntoOtherTables($username)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        private function insertIntoOtherTables($username) {
+            $gsql = "SELECT id FROM user_login WHERE username = '$username'";
+            $r = $this->db->conn->query($gsql);
+            $id;
+            if($r->num_rows > 0) {
+                $id = $r->fetch_row()[0];
+            } else {
+                return false;
+            }
+            $queries = array(
+                //TO-DO: insert id and defaults into other tables as needed
+                "INSERT INTO user_preferences (id) VALUES ('$id')"
+            );
+            $allGood = true;
+            foreach($queries as $query) {
+                if(!$this->db->conn->query($query)) {
+                    $allGood = false;
+                }
+            }
+            if($allGood) {
                 return true;
             } else {
                 return false;
