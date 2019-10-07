@@ -1,42 +1,32 @@
 <?php
-    class Delete {
-        public $db;
-        public function __construct() {
-            include '../../config/db.php';
-            $this->db = new Data();
-        }
-        
-        public function validate($token) {
-            //to-do, check that user is deleting their own account, and not deleting someone else's.  
-        }
-        public function logout() {
-            //to-do.  remove any tokens user has after deletion successful
-        }
-    }
-    if($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
-        echo json_encode(array(
-            "result" => false,
-            "message" => "invalid request type"
-        ));
-    } else {
-        $del = new Delete();
+class Delete {
+    public $db;
+    private $id;
+    private $queries = array(
+        "DELETE FROM user_login WHERE id = ",
+        "DELETE FROM user_preferences WHERE id = "
+        //TO-DO: add SQL entries to this array as needed (IE: if I store additional data in a separate table)
+        //...(this will be turned into one query once table structure is finalized)
+    );
+    public function __construct() {
+        include '../../config/db.php';
+        $this->db = new Data();
+        if($this->db->verifyToken()) {
+            echo json_encode(array(
+                "result" => "false",
+                "message" => "invalid user token"
+            ));
+        } else {
         $c = trim(file_get_contents('php://input'));
         $D = json_decode($c, true);
-        $id;
-        $user = $del->db->sanitize($D['username']);
-        echo $user;
+        $user = $this->db->sanitize($D['username']);
         $selSQL = "SELECT id FROM user_login WHERE username = '$user'";
-        $selRes = $del->db->conn->query($selSQL);
+        $selRes = $this->db->conn->query($selSQL);
         if($selRes->num_rows > 0) {
-            $id = $selRes->fetch_row()[0];
-            $queries = array(
-                "DELETE FROM user_login WHERE id = '$id'",
-                "DELETE FROM user_preferences WHERE id = '$id'"
-                //TO-DO: add SQL entries to this array as needed (IE: if I store additional data in a separate table)
-            );
+            $this->id = $selRes->fetch_row()[0];
             $allGood = true;
-            foreach($queries as $query) {
-                if(!$del->db->conn->query($query)) {
+            foreach($this->queries as $query) {
+                if(!$this->db->conn->query($query)) {
                     $allGood = false;   
                 }
             }
@@ -48,6 +38,17 @@
                 "result" => false,
                 "message" => "nouser"       
             ));
+            }
         }
     }
+
+}
+if($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
+    echo json_encode(array(
+        "result" => false,
+        "message" => "invalid request type"
+    ));
+} else {
+    $d = new Delete();
+}
 ?>

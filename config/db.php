@@ -1,4 +1,8 @@
 <?php
+    //this class is the big top-level class when it comes to anything related to the database
+    //it houses the mysqli connection, as well as any functions that are not unique to a particular endpoint, such as verifying authentication tokens
+    //possible to-do: 
+        //if this file gets too large, I may split off the generic functions into a seperate class(es) that gets loaded into this class
     class Data {
         public $conn;
         private $settings;
@@ -9,6 +13,7 @@
             $this->connectToDB();
             $this->setJWT();
         }
+        //checks if firsttimesetup.php needs to run
         private function checkFTS() {
             if(file_exists(dirname(__FILE__) . '/firstTimeSetup.php')) {
                 include dirname(__FILE__) . '/firstTimeSetup.php';
@@ -17,16 +22,19 @@
                 //unlink('../firstTimeSetup.php');
             }
         }
+        //sets $this->settings 
         private function setSettings() {
             include dirname(__FILE__) . '/settings.php';
             $this->settings = $settings;
         }
+        //opens a mysqli connection, and checks for connection errors
         private function connectToDB() {
             $this->conn = new mysqli($this->settings['hostname'], $this->settings['username'], $this->settings['password'], $this->settings['dbname']);
             if($this->conn->connect_error) {
                 die($this->conn->connect_error);
             }
         }
+        //sets $this->jwt to the JWT class
         private function setJWT() {
             include dirname(__FILE__) . '/vendor/firebase/php-jwt/src/JWT.php';
             $this->jwt = new JWT();
@@ -34,9 +42,11 @@
         public function hashPW($p) {
             return password_hash($p, PASSWORD_BCRYPT);
         }
+        //returns a string, sanitized to help prevent sql injection and other bad things
         public function sanitize($input) {
             return htmlspecialchars(stripslashes(trim($input)));
         }  
+        //returns a bool, checks whether username/email is inside the database or not
         public function checkUnique($input, $type) {
             if(empty($input) || empty($type)) {
                 return false;
@@ -52,11 +62,13 @@
             }
             return $res;
         }
+        //returns a (encoded) JWT, taken from the request header
         private function getToken() {
             $headers = getallheaders();
             $token = $headers['jwt'];
             return $token;
         }
+        //returns an int corresponding to user id
         public function getUserId() {
             $token = $this->getToken();
             $decoded = $this->jwt::decode($token, $this->settings['secret_key'], array('HS256'));
@@ -69,15 +81,15 @@
                 return false;
             }
         }
-        
+        //returns a JWT, to be sent back with response
         public function setToken($username, $password) {
-            //I HOPE YOU LOOK AT THIS FUTURE SELF:  THIS FUNCTION NEEDS TO BE CALLED WITH THE HASHED PASSWORD NOT THE PLAINTEXT ONE!!!
             $token = array(
                 "username" => $username,
                 "password" => $password
             );
             return $this->jwt::encode($token, $this->settings['secret_key']);   
         }
+        //returns a bool, verifying whether or not token corresponds to a user
         public function verifyToken() {
             $token = $this->getToken();
             $decoded = $this->jwt::decode($token, $this->settings['secret_key'], array('HS256'));
@@ -86,27 +98,29 @@
             $sql = "SELECT password FROM user_login WHERE username = '$uname'";
             $r = $this->conn->query($sql);
             if($r->num_rows > 0) {
-
                 if($pw === $r->fetch_row()[0]){
                     return true;
                 } else {
+                    //bad password
                     return false;
                 }
             } else {
+                //bad username
                 return false;
             }
             
         }
         //tablename is a string
-        //data is an associative array, with one or more 'color_mode'(string), 'goal_type'(string), and 'goal_duration'(int) values
+        //data is an associative array, with one or more non-id values
         //id is an int
+        //returns a sql querystring, or false
         public function getUpdateQuery($tableName, $data, $id) {
-            $gsql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '".$this->settings['dbname'] ."' AND TABLE_NAME = '$tableName'";
-            foreach($data as $key => $value) {
-                if($key === 'id') {
-                    unset($data[$key]);
-                }
+            //dont want to ever change id
+            if(array_key_exists('id', $data)) {
+                unset($data['id']);
             }
+            //fetch column names
+            $gsql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '".$this->settings['dbname'] ."' AND TABLE_NAME = '$tableName'";
             $k = $this->conn->query($gsql);
             $keys = array();
             if($k->num_rows > 0) {
@@ -114,13 +128,17 @@
                     array_push($keys, $row["COLUMN_NAME"]);
                 }
             }
+            //add values to be updated to $values
             $values = array();
             foreach($keys as $key) {
                 array_key_exists($key, $data) ? array_push($values, array($key, $data[$key])) : false;
             }
+
+            //return false if nothing is going to be updated
             if(sizeof($values) === 0) {
                 return false;
             }
+            //build sql querystring
             $resstr = "UPDATE $tableName SET ";
             foreach($values as $value) {
                 if(!empty($value[1])) {
