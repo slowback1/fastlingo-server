@@ -69,10 +69,12 @@
             if($reg->checkPasswords($p, $p2)) {
                 $sp = $reg->db->hashPW($p);
                 $reg->insertIntoDB($u, $sp, $e);
+                $token = $reg->db->setToken($u, $sp);
                 //TO-DO: send login token along with success response
                 echo json_encode(array(
                     "result"  => true,
-                    "message" => "success"
+                    "message" => "success",
+                    "jwt"     => $token
                 ));
             } else {
                 echo json_encode(array(

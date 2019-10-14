@@ -12,6 +12,7 @@
             $this->setSettings();
             $this->connectToDB();
             $this->setJWT();
+            $this->setCORS();
         }
         //checks if firsttimesetup.php needs to run
         private function checkFTS() {
@@ -38,6 +39,12 @@
         private function setJWT() {
             include dirname(__FILE__) . '/vendor/firebase/php-jwt/src/JWT.php';
             $this->jwt = new JWT();
+        }
+        //sets default CORS headers
+        private function setCORS() {
+            header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
+            header('Access-Control-Allow-Credentials: true');
+            header('Access-Control-Max-Age: 86400');
         }
         public function hashPW($p) {
             return password_hash($p, PASSWORD_BCRYPT);
